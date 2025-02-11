@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
                 // Additional directories to include as html (must contain index.html files)
                 sites: [
                     "sites/empty",
+                    "sites/plasticobs",
 
                     // Include sample sites in the build
                     ...sampleSites

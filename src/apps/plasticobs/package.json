@@ -1,0 +1,12 @@
+{
+    "name": "plasticobs",
+    "private": true,
+    "dependencies": {
+        "@open-pioneer/authentication": "catalog:",
+        "@open-pioneer/chakra-integration": "catalog:",
+        "@open-pioneer/http": "catalog:",
+        "@open-pioneer/runtime": "catalog:",
+        "authentication-pkce": "workspace:^",
+        "react-router": "catalog:"
+    }
+}
