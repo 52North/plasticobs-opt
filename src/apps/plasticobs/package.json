@@ -6,7 +6,6 @@
         "@open-pioneer/chakra-integration": "catalog:",
         "@open-pioneer/http": "catalog:",
         "@open-pioneer/runtime": "catalog:",
-        "authentication-pkce": "workspace:^",
-        "react-router": "catalog:"
+        "authentication-pkce": "workspace:^"
     }
 }
