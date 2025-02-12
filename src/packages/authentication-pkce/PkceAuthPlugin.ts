@@ -16,7 +16,7 @@ import {
     type DECLARE_SERVICE_INTERFACE
 } from "@open-pioneer/runtime";
 import { jwtDecode, JwtPayload } from "jwt-decode";
-import { AccessContext, Configuration, OAuth2AuthCodePkceClient } from "oauth2-pkce";
+import { AccessContext, OAuth2AuthCodePkceClient } from "oauth2-pkce";
 import { PkceOptions, PkceProperties } from "./api";
 
 const LOG = createLogger("authentication-pkce:PkceAuthPlugin");
@@ -57,13 +57,29 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
             throw new Error("Failed to construct pkce client!", { cause: e });
         }
 
-        if (this.#oauthClient.isAuthorized()) {
-            this.#oauthClient.getTokens().then((ctx) => this.#restoreState(ctx));
-        } else if (this.#oauthClient.isReturningFromAuthServer()) {
-            this.#receiveCode();
-        } else {
-            this.#startCodeFlow();
-        }
+        const oauthClient = this.#oauthClient;
+        /* eslint-disable  @typescript-eslint/no-explicit-any */
+        const patchedClient = oauthClient as any;
+        patchedClient.ready.then(() => {
+            if (oauthClient.isAuthorized()) {
+                if (oauthClient.isAccessTokenExpired()) {
+                    oauthClient
+                        .exchangeRefreshTokenForAccessToken()
+                        .then((ctx) => this.#restoreState(ctx));
+                } else {
+                    oauthClient.getTokens().then((ctx) => this.#restoreState(ctx));
+                }
+            } else if (oauthClient.isReturningFromAuthServer()) {
+                this.#receiveCode().then(() => {
+                    delete patchedClient.state.authorizationCode;
+                    delete patchedClient.state.codeChallenge;
+                    delete patchedClient.state.codeVerifier;
+                    delete patchedClient.state.code;
+                });
+            } else {
+                this.#startCodeFlow();
+            }
+        });
     }
 
     destroy() {
@@ -110,7 +126,7 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
     }
 
     async #receiveCode() {
-        this.#oauthClient
+        return this.#oauthClient
             .receiveCode()
             .then(async () => {
                 const client = this.#oauthClient;
@@ -124,19 +140,6 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
                 const error = typeof e === "string" ? new Error(e) : e;
                 throw new Error("Failed to initialize PKCE session", { cause: error });
             });
-    }
-
-    private __refresh(interval: number) {
-        clearInterval(this.#timerId);
-        this.#timerId = setInterval(() => {
-            this.#oauthClient.exchangeRefreshTokenForAccessToken().catch((e) => {
-                LOG.error("Failed to refresh token", e);
-                this.#updateState({
-                    kind: "not-authenticated"
-                });
-                this.destroy();
-            });
-        }, interval);
     }
 
     #restoreState(tokens: AccessContext) {
@@ -168,6 +171,24 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
 
     #updateState(newState: AuthState) {
         this.#state.value = newState;
+    }
+
+    private __refresh(interval: number) {
+        clearInterval(this.#timerId);
+        this.#timerId = setInterval(() => {
+            this.#oauthClient
+                .exchangeRefreshTokenForAccessToken()
+                .then((ctx) => {
+                    this.#restoreState(ctx);
+                })
+                .catch((e) => {
+                    LOG.error("Failed to refresh token", e);
+                    this.#updateState({
+                        kind: "not-authenticated"
+                    });
+                    this.destroy();
+                });
+        }, interval);
     }
 }
 
