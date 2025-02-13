@@ -9,15 +9,10 @@ import {
 } from "@open-pioneer/authentication";
 import { Resource, createLogger, destroyResource } from "@open-pioneer/core";
 import { NotificationService } from "@open-pioneer/notifier";
-import {
-    PackageIntl,
-    Service,
-    ServiceOptions,
-    type DECLARE_SERVICE_INTERFACE
-} from "@open-pioneer/runtime";
+import { PackageIntl, Service, ServiceOptions } from "@open-pioneer/runtime";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import { AccessContext, OAuth2AuthCodePkceClient } from "oauth2-pkce";
-import { PkceOptions, PkceProperties } from "./api";
+import { PkceOptions, PkceProperties, RefreshOptions } from "./api";
 
 const LOG = createLogger("authentication-pkce:PkceAuthPlugin");
 
@@ -26,8 +21,6 @@ interface References {
 }
 
 export class PkceAuthPluginImpl implements Service, AuthPlugin {
-    declare [DECLARE_SERVICE_INTERFACE]: "authentication-pkce.AuthPlugin";
-
     #notifier: NotificationService;
     #intl: PackageIntl;
     #pkceOptions: PkceOptions;
@@ -61,7 +54,21 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
         /* eslint-disable  @typescript-eslint/no-explicit-any */
         const patchedClient = oauthClient as any;
         patchedClient.ready.then(() => {
-            if (oauthClient.isAuthorized()) {
+            if (oauthClient.isReturningFromAuthServer()) {
+                this.#receiveCode().then(() => {
+                    delete patchedClient.state.authorizationCode;
+                    delete patchedClient.state.codeChallenge;
+                    delete patchedClient.state.codeVerifier;
+                    delete patchedClient.state.code;
+                    patchedClient.saveState().then(() => {
+                        const location = window.location;
+                        const query = new URLSearchParams(location.search);
+                        query.delete("code");
+                        query.delete("state");
+                        location.search = query.size ? query.toString() : "";
+                    });
+                });
+            } else if (oauthClient.isAuthorized()) {
                 if (oauthClient.isAccessTokenExpired()) {
                     oauthClient
                         .exchangeRefreshTokenForAccessToken()
@@ -69,13 +76,6 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
                 } else {
                     oauthClient.getTokens().then((ctx) => this.#restoreState(ctx));
                 }
-            } else if (oauthClient.isReturningFromAuthServer()) {
-                this.#receiveCode().then(() => {
-                    delete patchedClient.state.authorizationCode;
-                    delete patchedClient.state.codeChallenge;
-                    delete patchedClient.state.codeVerifier;
-                    delete patchedClient.state.code;
-                });
             } else {
                 this.#startCodeFlow();
             }
@@ -146,18 +146,19 @@ export class PkceAuthPluginImpl implements Service, AuthPlugin {
         const pkceOptions = this.#pkceOptions;
         const refreshOptions = pkceOptions.refreshOptions;
 
-        const idToken = jwtDecode<JwtPayload>(tokens.idToken!);
+        const idTokenParsed = jwtDecode<JwtPayload>(tokens.idToken!);
         const authState: AuthStateAuthenticated = {
             kind: "authenticated",
             sessionInfo: {
-                userId: idToken.sub ?? "undefined"
-                // userName: this.#keycloak.idTokenParsed?.preferred_username,
-                // attributes: {
-                //     keycloak: this.#keycloak,
-                //     familyName: this.#keycloak.idTokenParsed?.family_name,
-                //     givenName: this.#keycloak.idTokenParsed?.given_name,
-                //     userName: this.#keycloak.idTokenParsed?.preferred_username
-                // }
+                userId: idTokenParsed.sub ?? "undefined",
+                //userName: this.#keycloak.idTokenParsed?.preferred_username,
+                attributes: {
+                    accessToken: tokens.accessToken,
+                    issuer: idTokenParsed.iss ?? "undefined"
+                    //     familyName: this.#keycloak.idTokenParsed?.family_name,
+                    //     givenName: this.#keycloak.idTokenParsed?.given_name,
+                    //     userName: this.#keycloak.idTokenParsed?.preferred_username
+                }
             }
         };
         this.#updateState(authState);
