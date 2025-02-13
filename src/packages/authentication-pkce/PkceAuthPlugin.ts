@@ -198,6 +198,14 @@ function getPkceConfig(properties: Partial<PkceProperties>): PkceOptions {
     return {
         pkceConfig: { ...pkceConfig, storeRefreshToken: true },
         scopes: Array.isArray(scopes) ? scopes : (scopes?.split(",") ?? ["openid"]),
-        refreshOptions
+        refreshOptions: parseRefreshOptions(refreshOptions)
+    };
+}
+
+function parseRefreshOptions(options: Partial<RefreshOptions>): RefreshOptions {
+    const autoRefresh = (options.autoRefresh ?? "false") as string;
+    return {
+        autoRefresh: /true/.test(autoRefresh),
+        interval: options.interval ?? 360000
     };
 }
