@@ -1,0 +1,19 @@
+{
+    "name": "geonode",
+    "version": "1.0.0",
+    "license": "Apache-2.0",
+    "main": "index.ts",
+    "keywords": [
+        "open-pioneer-trails",
+        "geonode"
+    ],
+    "private": true,
+    "dependencies": {
+        "@conterra/reactivity-core": "catalog:",
+        "@open-pioneer/authentication": "catalog:",
+        "@open-pioneer/core": "catalog:",
+        "@open-pioneer/notifier": "catalog:",
+        "@open-pioneer/runtime": "catalog:",
+        "authentication-pkce": "workspace:^"
+    }
+}

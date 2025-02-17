@@ -7,7 +7,7 @@ export interface PkceProperties {
 }
 
 export interface PkceOptions {
-    scopes: string | string[];
+    scopes?: string | string[];
     pkceConfig: Configuration;
     refreshOptions: RefreshOptions;
 }

@@ -6,7 +6,7 @@ export default defineBuildConfig({
     i18n: ["en"],
     services: {
         PkceAuthPluginImpl: {
-            provides: ["authentication.AuthPlugin", "authentication-pkce.AuthPlugin"],
+            provides: ["authentication.AuthPlugin"],
             references: {
                 notifier: "notifier.NotificationService"
             }

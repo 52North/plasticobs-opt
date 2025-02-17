@@ -5,14 +5,22 @@ import { defineBuildConfig } from "@open-pioneer/build-support";
 export default defineBuildConfig({
     i18n: ["en"],
     services: {
-        GeoNodeTokenInterceptor: {
-            provides: ["http.Interceptor"],
+        GeoNodeLitterAssessmentImpl: {
+            provides: ["geonode.dfki-litterassessment"],
             references: {
-                authService: "authentication.AuthService"
+                httpClient: "http.HttpService",
+                configService: "geonode.ConfigService",
+                authService: "authentication.AuthService",
+                notifier: "notifier.NotificationService"
             }
         }
     },
+    properties: {
+        geonodeOptions: {
+            geonodeConfig: null
+        }
+    },
     ui: {
-        references: ["authentication.AuthService", "authentication.AuthPlugin", "http.HttpService"]
+        references: ["geonode.UserService", "authentication.AuthService"]
     }
 });

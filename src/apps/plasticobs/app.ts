@@ -10,6 +10,13 @@ const Element = createCustomElement({
     appMetadata,
     config: {
         properties: {
+            "geonode": {
+                geonodeOptions: {
+                    geonodeConfig: {
+                        baseUrl: import.meta.env.VITE_GEONODE_BASE_URL
+                    }
+                }
+            },
             "authentication-pkce": {
                 pkceOptions: {
                     scopes: import.meta.env.VITE_PKCE_CONFIG_SCOPES,
